@@ -1,0 +1,129 @@
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+int potPin = 35; // Potentiometer output connected to analog pin 3
+int potPin1 = 34;
+int potPin2 = 33;
+int potPin3 = 32;
+int potVal = 0; // Variable to store the input from the potentiometer
+int potVal1 = 0; 
+int potVal2 = 0; 
+int potVal3 = 0; 
+int potVal4 = 0; 
+int angle3 = 0;
+int angle1 = 0;
+int angle2 = 0;
+
+int potValS = 0;
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7735.h>
+#include <SPI.h>
+#include "DHT.h"
+
+#define DHTPIN 19        // Pin where the DHT11 is connected
+#define DHTTYPE DHT11    // DHT11 sensor
+
+DHT dht(DHTPIN, DHTTYPE);  // Create DHT sensor object
+
+// Define your pins
+#define TFT_CS     5
+#define TFT_RST    4
+#define TFT_DC     2
+#define TFT_SCLK   18
+#define TFT_MOSI   23
+// Optional: #define TFT_BLK    21
+
+// Create display object (for ST7735)
+Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
+
+// Servo pulse parameters (for MG996R)
+#define SERVO_MIN  150 // Min pulse length out of 4096 (≈ 0°)
+#define SERVO_MAX  600 // Max pulse length out of 4096 (≈ 180°)
+#define SERVO_CHANNEL 0 // PCA9685 channel the servo is connected to
+
+// Function to convert angle to pulse length
+uint16_t angleToPulse(int angle) {
+  return map(angle, 0, 180, SERVO_MIN, SERVO_MAX);
+}
+
+void setup() {
+  Serial.begin(115200);
+  pwm.begin();
+  pwm.setPWMFreq(50); // 50Hz for servos
+  delay(10); // Wait for PWM to stabilize
+
+  //Move servo to 90°
+  int pulse = angleToPulse(90);
+  pwm.setPWM(SERVO_CHANNEL, 0, pulse);
+  Serial.println("Moved servo to 90 degrees");
+  tft.initR(INITR_BLACKTAB);  // For most 1.8" displays
+  tft.setRotation(1);         // Landscape mode (0-3)
+  tft.fillScreen(ST77XX_WHITE);
+
+  // Example drawing:
+  tft.setTextColor(ST77XX_BLACK);
+  tft.setTextSize(3);
+  tft.setCursor(10, 10);
+  tft.println("ROBOT ARM");
+
+}
+
+void loop() {
+  
+  potVal = analogRead(potPin);
+  Serial.println(potVal);
+  potValS = potVal / 1365;
+  potValS += 1;
+
+  potVal1 = analogRead(potPin1);
+  potVal2 = analogRead(potPin2);
+  potVal3 = analogRead(potPin3);
+  
+  angle1 = potVal1 / 22.75;
+  angle2 = potVal2 / 22.75;
+  angle3 = potVal3 / 22.75;
+
+
+
+
+  
+  Serial.println("");
+  Serial.println(angle1);
+   tft.setTextSize(3);
+  tft.fillRect(0, 40, 160, 16, ST77XX_WHITE);  // Clear old number
+  tft.setCursor(10, 40);
+  tft.setTextColor(ST77XX_BLACK);
+  tft.setTextSize(2);
+  tft.print(String(potValS) + " status");
+
+  tft.setTextSize(2);
+  tft.fillRect(0, 65, 160, 100, ST77XX_WHITE);  // Clear old number
+  tft.setCursor(10, 65);
+  tft.setTextColor(ST77XX_BLACK);
+  tft.setTextSize(2);
+  tft.print(String(angle1) + " angle 34");
+
+  tft.setCursor(10, 80);
+  tft.setTextColor(ST77XX_BLACK);
+  tft.setTextSize(2);
+  tft.print(String(angle2) + " angle 33");
+
+  tft.setCursor(10, 95);
+  tft.setTextColor(ST77XX_BLACK);
+  tft.setTextSize(2);
+  tft.print(String(angle3) + " angle 32");
+
+
+  int pulse = angleToPulse(angle1);
+  pwm.setPWM(0, 0, pulse);
+
+  int pulse1 = angleToPulse(angle2);
+  pwm.setPWM(1, 0, pulse1);
+  int pulse2 = angleToPulse(angle2 - 180);
+  pwm.setPWM(2, 0, pulse2);
+
+
+  // Do nothing
+  delay(3000);
+
+}
