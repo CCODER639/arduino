@@ -1,0 +1,121 @@
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7735.h>
+#include <SPI.h>
+#include "DHT.h"
+
+#define DHTPIN 19
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+#define TFT_CS     5
+#define TFT_RST    4
+#define TFT_DC     2
+#define TFT_SCLK   18
+#define TFT_MOSI   23
+
+Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+
+#define SERVO_MIN  102
+#define SERVO_MAX  512
+
+int potPin = 35;
+int potPin1 = 34;
+int potPin2 = 33;
+int potPin3 = 32;
+
+int potVal = 0, potVal1 = 0, potVal2 = 0, potVal3 = 0;
+int angle1 = 0, angle2 = 0, angle3 = 0;
+int potValS = 0;
+
+// Track current servo angles (initialize at 90°)
+int currentAngle[8] = {90, 90, 90, 90, 90, 90, 90, 90};
+
+// Convert angle to PWM pulse
+uint16_t angleToPulse(int angle) {
+  return map(angle, 0, 180, SERVO_MIN, SERVO_MAX);
+}
+
+// Smooth movement with easing
+void smoothMove(int channel, int targetAngle, int stepSize = 2, int delayTime = 5) {
+  targetAngle = constrain(targetAngle, 0, 180);
+  int &current = currentAngle[channel];
+
+  if (current == targetAngle) return;
+
+  int step = (current < targetAngle) ? stepSize : -stepSize;
+  while (current != targetAngle) {
+    current += step;
+    if ((step > 0 && current > targetAngle) || (step < 0 && current < targetAngle)) {
+      current = targetAngle;
+    }
+    pwm.setPWM(channel, 0, angleToPulse(current));
+    delay(delayTime);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  pwm.begin();
+  pwm.setPWMFreq(50);
+  delay(10);
+
+  int pulse = angleToPulse(90);
+  pwm.setPWM(0, 0, pulse);
+  Serial.println("Moved servo to 90 degrees");
+
+  tft.initR(INITR_BLACKTAB);
+  tft.setRotation(1);
+  tft.fillScreen(ST77XX_WHITE);
+  tft.setTextColor(ST77XX_BLACK);
+  tft.setTextSize(3);
+  tft.setCursor(10, 10);
+  tft.println("ROBOT ARM");
+}
+
+void loop() {
+  potVal = analogRead(potPin);
+  potValS = potVal / 1365;
+  potValS += 1;
+
+  potVal1 = analogRead(potPin1);
+  potVal2 = analogRead(potPin2);
+  potVal3 = analogRead(potPin3);
+
+  angle1 = constrain(potVal1 / 22.75, 0, 180);
+  angle2 = constrain(potVal2 / 22.75, 0, 180);
+  angle3 = constrain(potVal3 / 22.75, 0, 180);
+
+  // Display
+  Serial.println(angle1);
+  tft.fillRect(0, 40, 160, 16, ST77XX_WHITE);
+  tft.setCursor(10, 40);
+  tft.setTextSize(2);
+  tft.print(String(potValS) + " status");
+
+  tft.fillRect(0, 65, 160, 100, ST77XX_WHITE);
+  tft.setCursor(10, 65);
+  tft.print(String(angle1) + " angle 34");
+  tft.setCursor(10, 80);
+  tft.print(String(angle2) + " angle 33");
+  tft.setCursor(10, 95);
+  tft.print(String(angle3) + " angle 32");
+
+  if (potValS == 2) {
+    smoothMove(0, angle1);
+    smoothMove(1, angle2 + 5);
+    smoothMove(2, 180 - angle2);
+    smoothMove(3, angle3 + 5);
+    smoothMove(4, 180 - angle3);
+  }
+
+  if (potValS == 4) {
+    smoothMove(5, angle1);
+    smoothMove(6, angle2);
+    smoothMove(7, angle3);
+  }
+
+  delay(50);  // Small delay to reduce flicker and debounce
+}
