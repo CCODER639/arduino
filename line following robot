@@ -1,0 +1,78 @@
+int motor1pin1 = 25;
+int motor1pin2 = 26;
+
+int motor2pin1 = 27;
+int motor2pin2 = 23;
+int c = 0;
+void setup() {
+  Serial.begin(9600);  
+
+  // put your setup code here, to run once:
+   pinMode(motor1pin1, OUTPUT);
+  pinMode(motor1pin2, OUTPUT);
+  pinMode(motor2pin1,   OUTPUT);
+  pinMode(motor2pin2, OUTPUT);
+
+  
+  //(Optional)
+}
+
+void loop() {
+  delayMicroseconds(500);  
+  int a = analogRead(35); 
+  int ar = analogRead(34); 
+  int al = analogRead(32); 
+  Serial.println(a); 
+
+if (a == 0) {
+    digitalWrite(motor1pin1, LOW);
+    digitalWrite(motor1pin2, HIGH);
+    digitalWrite(motor2pin1, HIGH);
+    digitalWrite(motor2pin2, LOW);
+    c = 0;
+}
+  else{  
+    // You might want to check for specific conditions here, or use an else clause
+  if(c <= 3){
+    digitalWrite(motor1pin1, LOW);
+    digitalWrite(motor1pin2, HIGH);
+    digitalWrite(motor2pin1, LOW);
+    digitalWrite(motor2pin2, HIGH);
+    
+    }
+    if(c >= 4){
+    digitalWrite(motor1pin1, HIGH);
+    digitalWrite(motor1pin2, LOW);
+    digitalWrite(motor2pin1, HIGH);
+    digitalWrite(motor2pin2, LOW);
+   
+    }
+    c += 1;
+    if(c == 10){
+      c = 0;
+    
+  }
+
+
+
+
+
+
+} 
+if(al == 0){
+    digitalWrite(motor1pin1, LOW);
+    digitalWrite(motor1pin2, HIGH);
+    digitalWrite(motor2pin1, LOW);
+    digitalWrite(motor2pin2, HIGH);
+    c = 0;
+
+  }
+else if(ar == 0){
+  digitalWrite(motor1pin1, HIGH);
+  digitalWrite(motor1pin2, LOW);
+  digitalWrite(motor2pin1, HIGH);
+  digitalWrite(motor2pin2, LOW);
+  c = 4;
+}
+  delay(30);
+}
