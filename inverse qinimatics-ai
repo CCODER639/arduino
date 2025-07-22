@@ -1,0 +1,75 @@
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+
+#define SERVO_MIN  102
+#define SERVO_MAX  512
+
+const float L1 = 131.0; // Shoulder to elbow length in mm
+const float L2 = 145.0; // Elbow to wrist length in mm
+
+int angle1 = 90;  // Shoulder servo
+int angle2 = 90;  // Elbow servo
+int angle3 = 90;  // Optional wrist logic
+
+uint16_t angleToPulse(int angle) {
+  return map(angle, 0, 180, SERVO_MIN, SERVO_MAX);
+}
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin(21, 22);
+  pwm.begin();
+  pwm.setPWMFreq(50);
+  delay(10);
+
+  Serial.println("Enter x y target (e.g., 80 50):");
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    float x = Serial.parseFloat();
+    float y = Serial.parseFloat();
+    if (x == 0 && y == 0) return;
+
+    Serial.print("Target: (");
+    Serial.print(x); Serial.print(", "); Serial.println(y);
+
+    // Distance check
+    float d = sqrt(x * x + y * y);
+     if (d > (L1 + L2) || d < fabs(L1 - L2)) {
+      Serial.println("Target out of reach!");
+      return;
+    }
+
+    // Inverse Kinematics
+    float cosA2 = (x * x + y * y - L1 * L1 - L2 * L2) / (2 * L1 * L2);
+    float angle2_rad = acos(cosA2); // elbow angle
+    float angle1_rad = atan2(y, x) - atan2(L2 * sin(angle2_rad), L1 + L2 * cos(angle2_rad));
+
+    // Convert to degrees
+    float raw_angle1 = angle1_rad * 180.0 / PI;
+    float raw_angle2 = angle2_rad * 180.0 / PI;
+
+    // Apply your servo mounting convention:
+    // Shoulder: 90° is up, 0° is forward → shift by +90
+    angle1 = 180 - constrain((int)(raw_angle1 + 90), 0, 180);
+
+    // Elbow: 0° straight, 90° = L shape, 180° = folded → use as-is
+    angle2 = 180 - constrain((int)(raw_angle2), 0, 180);
+
+    // Optional: wrist or third servo logic (adjust as needed)
+    //angle3 = 180 - constrain((angle2-((angle1+90)-180)), 0, 180);
+    // Move servos
+    pwm.setPWM(0, 0, angleToPulse(90));                      // fixed
+    pwm.setPWM(1, 0, angleToPulse(angle1 + 3));              // servo1
+    pwm.setPWM(2, 0, angleToPulse(180 - angle1));            // mirror1
+    pwm.setPWM(3, 0, angleToPulse(angle2 + 3));              // servo2
+    pwm.setPWM(4, 0, angleToPulse(180 - angle2));            // mirror2
+    pwm.setPWM(5, 0, angleToPulse(90));       // wrist or extra
+
+  }
+
+  delay(30);
+}
