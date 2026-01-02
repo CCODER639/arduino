@@ -1,0 +1,67 @@
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+
+// Servo pulse limits
+#define SERVO_MIN  102
+#define SERVO_MAX  512
+
+// Convert angle (0–180) to PWM pulse
+uint16_t angleToPulse(int angle) {
+  return map(angle, 0, 180, SERVO_MIN, SERVO_MAX);
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  pwm.begin();
+  pwm.setPWMFreq(50);
+  delay(10);
+
+  Serial.println("=== 12-Servo Control Ready ===");
+  Serial.println("Type: S# ANGLE");
+  Serial.println("Example: S7 130");
+  Serial.println("Valid servo numbers: 0–11");
+}
+
+void loop() {
+  if (Serial.available()) {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    if (cmd.length() < 3) return;
+
+    // Must start with 'S'
+    if (cmd[0] == 'S') {
+      // Parse servo number (0–11)
+      int spaceIndex = cmd.indexOf(' ');
+      if (spaceIndex == -1) return;
+
+      String servoStr = cmd.substring(1, spaceIndex);
+      int servo = servoStr.toInt();
+
+      // Parse angle
+      int angle = cmd.substring(spaceIndex + 1).toInt();
+
+      // Validate servo range
+      if (servo < 0 || servo > 11) {
+        Serial.println("Error: Servo must be between 0 and 11");
+        return;
+      }
+
+      // Clamp angle
+      if (angle < 0) angle = 0;
+      if (angle > 180) angle = 180;
+
+      // Move servo
+      int pulse = angleToPulse(angle);
+      pwm.setPWM(servo, 0, pulse);
+
+      Serial.print("Moved servo ");
+      Serial.print(servo);
+      Serial.print(" to ");
+      Serial.print(angle);
+      Serial.println(" degrees");
+    }
+  }
+}
